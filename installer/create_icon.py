@@ -74,7 +74,7 @@ def main():
         sizes=[(s, s) for s in SIZES],
         append_images=frames[1:],
     )
-    print(f"Icon saved → {OUT}")
+    print(f"Icon saved -> {OUT}")
 
 
 if __name__ == "__main__":
