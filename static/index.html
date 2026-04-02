@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF Annotation Studio</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ── Toolbar ─────────────────────────────────────────────────────────── -->
+  <div id="toolbar">
+    <span id="appTitle">PDF Annotator</span>
+    <div class="tb-sep"></div>
+
+    <!-- File -->
+    <button class="tb-btn" id="btnOpen" data-tip="Open PDF (Ctrl+O)" onclick="UI.openFile()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+      Open
+    </button>
+    <button class="tb-btn" id="btnSave" data-tip="Save (Ctrl+S)" onclick="App.saveAnnotations()" disabled>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      Save
+    </button>
+
+    <div class="tb-sep"></div>
+
+    <!-- Tools -->
+    <button class="tb-btn active" id="tool-select" data-tip="Select/Move (V)" onclick="App.setTool('select')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3l14 9-7 1-3 7z"/></svg>
+      Select
+    </button>
+    <button class="tb-btn" id="tool-rect" data-tip="Rectangle (R)" onclick="App.setTool('rect')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+      Rect
+    </button>
+    <button class="tb-btn" id="tool-polygon" data-tip="Polygon (G)" onclick="App.setTool('polygon')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 22 9 18 21 6 21 2 9"/></svg>
+      Polygon
+    </button>
+    <button class="tb-btn" id="tool-freehand" data-tip="Freehand Lasso (F)" onclick="App.setTool('freehand')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12c0-4.97 4.03-9 9-9s9 4.03 9 9-4.03 9-9 9"/><path d="M3 12c0 2 .8 3.7 2 5"/></svg>
+      Lasso
+    </button>
+    <button class="tb-btn" id="tool-pan" data-tip="Pan (Space / Middle-click)" onclick="App.setTool('pan')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 11V6a2 2 0 00-2-2v0a2 2 0 00-2 2v0M14 10V4a2 2 0 00-2-2v0a2 2 0 00-2 2v2M10 10.5V6a2 2 0 00-2-2v0a2 2 0 00-2 2v8"/><path d="M18 11a2 2 0 114 0v3a8 8 0 01-8 8h-2c-2.76 0-5.17-.5-6.24-2.77l-2.08-4.52A2 2 0 015.5 12.6v0"/></svg>
+      Pan
+    </button>
+    <button class="tb-btn danger" id="tool-eraser" data-tip="Eraser — click region to delete (E)" onclick="App.setTool('eraser')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 20H7L3 16l10-10 7 7-3.5 3.5"/><path d="M6.0001 10L14 18"/></svg>
+      Erase
+    </button>
+
+    <div class="tb-sep"></div>
+
+    <!-- Undo/Redo -->
+    <button class="tb-btn" id="btnUndo" data-tip="Undo (Ctrl+Z)" onclick="App.undo()" disabled>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 00-4-4H4"/></svg>
+    </button>
+    <button class="tb-btn" id="btnRedo" data-tip="Redo (Ctrl+Y)" onclick="App.redo()" disabled>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 014-4h12"/></svg>
+    </button>
+
+    <div class="tb-sep"></div>
+
+    <!-- Zoom -->
+    <button class="tb-btn" data-tip="Zoom out (-)" onclick="App.zoom(-0.1)">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+    </button>
+    <span id="zoomLabel">100%</span>
+    <button class="tb-btn" data-tip="Zoom in (+)" onclick="App.zoom(0.1)">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+    </button>
+    <button class="tb-btn" data-tip="Fit page (0)" onclick="App.fitPage()">Fit</button>
+
+    <div class="tb-sep"></div>
+
+    <!-- Page nav -->
+    <div class="nav-group">
+      <button class="tb-btn" id="btnPrev" data-tip="Previous page (←)" onclick="App.goPage(App.state.page - 1)" disabled>&#8592;</button>
+      <input id="pageInput" type="number" min="1" value="1" onchange="App.goPage(parseInt(this.value))">
+      <span id="pageTotalLabel">/ —</span>
+      <button class="tb-btn" id="btnNext" data-tip="Next page (→)" onclick="App.goPage(App.state.page + 1)" disabled>&#8594;</button>
+    </div>
+
+    <div class="tb-spacer"></div>
+
+    <!-- Theme + save status -->
+    <div id="saveIndicator">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span id="saveText">—</span>
+    </div>
+    <div class="tb-sep"></div>
+    <button class="tb-btn" data-tip="Toggle theme (T)" onclick="UI.toggleTheme()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+    </button>
+  </div>
+
+  <!-- ── Label bar ──────────────────────────────────────────────────────────── -->
+  <div id="labelbar">
+    <span id="labelbarTitle">Label:</span>
+    <!-- chips rendered by ui.js -->
+    <button id="addLabelBtn" onclick="UI.addLabel()">+ Add</button>
+  </div>
+
+  <!-- ── Thumbnail strip ───────────────────────────────────────────────────── -->
+  <div id="thumbStrip">
+    <div id="thumbLoading">Open a PDF to begin</div>
+  </div>
+
+  <!-- ── Canvas ─────────────────────────────────────────────────────────────── -->
+  <div id="canvasArea" class="tool-select">
+    <canvas id="mainCanvas"></canvas>
+
+    <!-- Drop zone -->
+    <div id="dropZone">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/><line x1="12" y1="13" x2="12" y2="19"/><polyline points="9 16 12 19 15 16"/></svg>
+      <h2>Drop a PDF here</h2>
+      <p>or click <b>Open</b> in the toolbar &nbsp;·&nbsp; Ctrl+O</p>
+    </div>
+
+    <!-- Spinner -->
+    <div id="pageSpinner"><div class="spinner-ring"></div></div>
+  </div>
+
+  <!-- ── Sidebar ────────────────────────────────────────────────────────────── -->
+  <div id="sidebar">
+    <div class="sidebar-tab-bar">
+      <div class="sidebar-tab active" id="tab-regions" onclick="UI.switchTab('regions')">Regions</div>
+      <div class="sidebar-tab" id="tab-labels" onclick="UI.switchTab('labels')">Labels</div>
+    </div>
+
+    <!-- Regions panel -->
+    <div class="sidebar-panel active" id="panel-regions">
+      <div id="regionList">
+        <div class="no-regions">Annotations will appear here once you draw regions on the page.</div>
+      </div>
+      <div id="noteArea" class="hidden">
+        <label>Note on selected region</label>
+        <textarea id="regionNote" placeholder="Optional note…" oninput="App.setRegionNote(this.value)"></textarea>
+      </div>
+    </div>
+
+    <!-- Labels panel -->
+    <div class="sidebar-panel" id="panel-labels">
+      <div id="labelManager"></div>
+      <button id="addLabelFullBtn" onclick="UI.addLabel()">+ Add Label</button>
+    </div>
+  </div>
+
+  <!-- ── Status bar ─────────────────────────────────────────────────────────── -->
+  <div id="statusBar">
+    <span class="status-item">Tool: <b id="stTool">Select</b></span>
+    <span class="status-item">Page: <b id="stPage">—</b></span>
+    <span class="status-item">Zoom: <b id="stZoom">—</b></span>
+    <span class="status-item">Regions: <b id="stRegions">0</b></span>
+    <span class="status-item">Cursor: <b id="stCursor">—</b></span>
+    <span id="statusMsg"></span>
+  </div>
+
+</div>
+
+<!-- ── Color picker popup ──────────────────────────────────────────────────── -->
+<div id="colorPicker">
+  <div class="color-grid" id="colorGrid"></div>
+  <input type="color" id="customColorInput" value="#6366f1" onchange="UI.pickCustomColor(this.value)">
+</div>
+
+<!-- ── Modal ──────────────────────────────────────────────────────────────── -->
+<div id="modal">
+  <div class="modal-box">
+    <h3 id="modalTitle">Recent Files</h3>
+    <div id="modalBody"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="UI.closeModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script src="ui.js"></script>
+</body>
+</html>

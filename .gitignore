@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.eggs/
+
+# PyInstaller
+build/
+dist/
+*.spec.bak
+
+# Inno Setup output
+installer/Output/
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env/
+
+# User data / app prefs
+.pdf_annotator/
+
+# Page image cache
+/tmp/pdf_annotator_cache/
+
+# Annotation files (user-generated, not part of source)
+*_annotations.json
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+__MACOSX/
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

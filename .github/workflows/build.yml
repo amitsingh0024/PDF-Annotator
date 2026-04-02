@@ -1,0 +1,106 @@
+name: Build Windows Installer
+
+on:
+  # Run automatically when you push a version tag  (e.g. git tag v1.0.0 && git push --tags)
+  push:
+    tags:
+      - 'v*'
+
+  # Also allow a manual trigger from the GitHub Actions tab
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version label (e.g. 1.0.0)'
+        required: false
+        default: 'dev'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── 2. Python ────────────────────────────────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      # ── 3. Dependencies ───────────────────────────────────────────────────────
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      # ── 4. Generate icon ──────────────────────────────────────────────────────
+      - name: Generate app icon
+        run: python installer/create_icon.py
+
+      # ── 5. Build .exe ─────────────────────────────────────────────────────────
+      - name: Build executable with PyInstaller
+        run: pyinstaller PDFAnnotator.spec --noconfirm
+
+      - name: Verify exe was produced
+        run: |
+          if (-not (Test-Path "dist\PDFAnnotator.exe")) {
+            Write-Error "dist\PDFAnnotator.exe not found!"
+            exit 1
+          }
+          $size = (Get-Item "dist\PDFAnnotator.exe").Length / 1MB
+          Write-Host "Executable size: $([math]::Round($size,1)) MB"
+        shell: pwsh
+
+      # ── 6. Build installer with Inno Setup ────────────────────────────────────
+      - name: Build installer (Inno Setup)
+        run: |
+          New-Item -ItemType Directory -Force -Path "installer\Output"
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\setup.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        shell: pwsh
+
+      - name: Verify installer was produced
+        run: |
+          if (-not (Test-Path "installer\Output\PDFAnnotatorSetup.exe")) {
+            Write-Error "Installer not found!"
+            exit 1
+          }
+          $size = (Get-Item "installer\Output\PDFAnnotatorSetup.exe").Length / 1MB
+          Write-Host "Installer size: $([math]::Round($size,1)) MB"
+        shell: pwsh
+
+      # ── 7. Upload installer as artifact (always available) ────────────────────
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PDFAnnotatorSetup
+          path: installer\Output\PDFAnnotatorSetup.exe
+          retention-days: 30
+
+      # ── 8. Create GitHub Release (only on version tags) ───────────────────────
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: PDF Annotation Studio ${{ github.ref_name }}
+          body: |
+            ## PDF Annotation Studio ${{ github.ref_name }}
+
+            ### Install
+            1. Download `PDFAnnotatorSetup.exe` below
+            2. Double-click to install
+            3. Launch from Start Menu or Desktop shortcut
+
+            ### Requirements
+            - Windows 10 or 11 (64-bit)
+            - ~80 MB disk space
+            - Internet connection on first run (downloads WebView2 if not present)
+
+            ### What's new
+            See commit history for changes in this release.
+          files: installer\Output\PDFAnnotatorSetup.exe
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
