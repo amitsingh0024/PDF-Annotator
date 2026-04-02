@@ -104,14 +104,15 @@ end;
 
 procedure InstallWebView2;
 var
-  TempFile, Url: String;
+  TempFile, Url, Args: String;
   ResultCode: Integer;
 begin
   Url      := 'https://go.microsoft.com/fwlink/p/?LinkId=2124703';
   TempFile := ExpandConstant('{tmp}\MicrosoftEdgeWebview2Setup.exe');
 
   if not FileExists(TempFile) then begin
-    if not idpDownloadFile(Url, TempFile) then begin
+    Args := '-NoProfile -NonInteractive -Command "Invoke-WebRequest -Uri ''' + Url + ''' -OutFile ''' + TempFile + '''"';
+    if not Exec('powershell.exe', Args, '', SW_HIDE, ewWaitUntilTerminated, ResultCode) or (ResultCode <> 0) then begin
       MsgBox(
         'Could not download WebView2 runtime.'#13#10 +
         'Please install it manually from:'#13#10 +
