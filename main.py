@@ -12,6 +12,7 @@ import os
 import threading
 import time
 from pathlib import Path
+from PIL import ImageEnhance, ImageFilter
 
 import pypdfium2 as pdfium
 import webview
@@ -423,8 +424,20 @@ class API:
                             int((x + w) * iw), int((y + h) * ih),
                         ))
 
+                        # ── Pre-process crop for better Devanagari recognition ──
+                        # 1. Grayscale — removes colour noise
+                        crop = crop.convert("L")
+                        # 2. Contrast boost — makes thin strokes crisper
+                        crop = ImageEnhance.Contrast(crop).enhance(2.0)
+                        # 3. Sharpen — recovers detail lost in rendering
+                        crop = crop.filter(ImageFilter.SHARPEN)
+
+                        # PSM 6  = single uniform text block (correct for pre-cropped regions)
+                        # OEM 1  = LSTM engine only (best for complex scripts like Devanagari)
+                        _ocr_cfg = "--psm 6 --oem 1"
+
                         _ocr_state["status"] = f"Page {page_num} — OCR [{lname}]…"
-                        text = pytesseract.image_to_string(crop, lang=lang).strip()
+                        text = pytesseract.image_to_string(crop, lang=lang, config=_ocr_cfg).strip()
 
                         if text:
                             chunks.append({
