@@ -40,10 +40,11 @@ echo.
 
 if not exist "installer\tessdata" mkdir installer\tessdata
 
-:: Tesseract Windows installer (UB-Mannheim build, v5.5)
+:: Tesseract Windows installer — fetch latest release from UB-Mannheim via GitHub API
 if not exist "installer\tesseract-ocr-w64-setup.exe" (
-    echo  Downloading Tesseract installer...
-    powershell -NoProfile -NonInteractive -Command "Invoke-WebRequest -Uri 'https://github.com/UB-Mannheim/tesseract/releases/download/v5.5.0.20231217/tesseract-ocr-w64-setup-5.5.0.20231217.exe' -OutFile 'installer\tesseract-ocr-w64-setup.exe' -UseBasicParsing"
+    echo  Resolving latest Tesseract release...
+    powershell -NoProfile -NonInteractive -Command ^
+        "$r = Invoke-RestMethod 'https://api.github.com/repos/UB-Mannheim/tesseract/releases/latest' -Headers @{'User-Agent'='curl'}; $a = $r.assets | Where-Object { $_.name -like 'tesseract-ocr-w64-setup-*.exe' } | Select-Object -First 1; if (-not $a) { exit 1 }; Write-Host ('Downloading: ' + $a.name); curl.exe -L --fail -o 'installer\tesseract-ocr-w64-setup.exe' $a.browser_download_url"
     if errorlevel 1 (
         echo  ERROR: Could not download Tesseract installer.
         echo  Download manually from: https://github.com/UB-Mannheim/tesseract/wiki
@@ -55,10 +56,10 @@ if not exist "installer\tesseract-ocr-w64-setup.exe" (
     echo  Tesseract installer already present, skipping download.
 )
 
-:: Hindi language data (tessdata_fast — fast + accurate enough for print)
+:: Hindi language data (tessdata_fast)
 if not exist "installer\tessdata\hin.traineddata" (
     echo  Downloading Hindi language data...
-    powershell -NoProfile -NonInteractive -Command "Invoke-WebRequest -Uri 'https://github.com/tesseract-ocr/tessdata_fast/raw/main/hin.traineddata' -OutFile 'installer\tessdata\hin.traineddata' -UseBasicParsing"
+    curl.exe -L --fail -o "installer\tessdata\hin.traineddata" "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/hin.traineddata"
     if errorlevel 1 (
         echo  ERROR: Could not download Hindi language data (hin.traineddata).
         echo  Download manually from: https://github.com/tesseract-ocr/tessdata_fast
@@ -72,7 +73,7 @@ if not exist "installer\tessdata\hin.traineddata" (
 :: Sanskrit language data
 if not exist "installer\tessdata\san.traineddata" (
     echo  Downloading Sanskrit language data...
-    powershell -NoProfile -NonInteractive -Command "Invoke-WebRequest -Uri 'https://github.com/tesseract-ocr/tessdata_fast/raw/main/san.traineddata' -OutFile 'installer\tessdata\san.traineddata' -UseBasicParsing"
+    curl.exe -L --fail -o "installer\tessdata\san.traineddata" "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/san.traineddata"
     if errorlevel 1 (
         echo  ERROR: Could not download Sanskrit language data (san.traineddata).
         echo  Download manually from: https://github.com/tesseract-ocr/tessdata_fast

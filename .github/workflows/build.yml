@@ -55,6 +55,19 @@ jobs:
         shell: pwsh
 
       # ── 6. Download Tesseract components (bundled into the installer) ───────────
+
+      # Resolve the latest UB-Mannheim release tag so the cache key tracks versions
+      - name: Resolve latest Tesseract release
+        id: tess-version
+        shell: pwsh
+        run: |
+          $release = Invoke-RestMethod `
+            -Uri "https://api.github.com/repos/UB-Mannheim/tesseract/releases/latest" `
+            -Headers @{ "User-Agent" = "GitHub-Actions" }
+          $tag = $release.tag_name
+          Write-Host "Latest Tesseract release: $tag"
+          echo "tag=$tag" >> $env:GITHUB_OUTPUT
+
       - name: Cache Tesseract components
         id: cache-tesseract
         uses: actions/cache@v4
@@ -63,7 +76,7 @@ jobs:
             installer/tesseract-ocr-w64-setup.exe
             installer/tessdata/hin.traineddata
             installer/tessdata/san.traineddata
-          key: tesseract-v5.5.0-tessdata-fast-hin-san
+          key: tesseract-${{ steps.tess-version.outputs.tag }}-tessdata-fast
 
       - name: Download Tesseract installer and language data
         if: steps.cache-tesseract.outputs.cache-hit != 'true'
@@ -71,25 +84,22 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path "installer\tessdata" | Out-Null
 
-          Write-Host "Downloading Tesseract installer..."
-          Invoke-WebRequest `
-            -Uri "https://github.com/UB-Mannheim/tesseract/releases/download/v5.5.0.20231217/tesseract-ocr-w64-setup-5.5.0.20231217.exe" `
-            -OutFile "installer\tesseract-ocr-w64-setup.exe" `
-            -UseBasicParsing
+          # Find the 64-bit Windows setup asset in the release
+          $release = Invoke-RestMethod `
+            -Uri "https://api.github.com/repos/UB-Mannheim/tesseract/releases/latest" `
+            -Headers @{ "User-Agent" = "GitHub-Actions" }
+          $asset = $release.assets | Where-Object { $_.name -like "tesseract-ocr-w64-setup-*.exe" } | Select-Object -First 1
+          if (-not $asset) { Write-Error "Could not find Tesseract w64 setup asset"; exit 1 }
+          Write-Host "Downloading Tesseract installer: $($asset.name)"
+          curl.exe -L --fail -o "installer\tesseract-ocr-w64-setup.exe" $asset.browser_download_url
           Write-Host "  -> $(([math]::Round((Get-Item 'installer\tesseract-ocr-w64-setup.exe').Length/1MB,1))) MB"
 
           Write-Host "Downloading Hindi language data..."
-          Invoke-WebRequest `
-            -Uri "https://github.com/tesseract-ocr/tessdata_fast/raw/main/hin.traineddata" `
-            -OutFile "installer\tessdata\hin.traineddata" `
-            -UseBasicParsing
+          curl.exe -L --fail -o "installer\tessdata\hin.traineddata" "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/hin.traineddata"
           Write-Host "  -> $(([math]::Round((Get-Item 'installer\tessdata\hin.traineddata').Length/1MB,1))) MB"
 
           Write-Host "Downloading Sanskrit language data..."
-          Invoke-WebRequest `
-            -Uri "https://github.com/tesseract-ocr/tessdata_fast/raw/main/san.traineddata" `
-            -OutFile "installer\tessdata\san.traineddata" `
-            -UseBasicParsing
+          curl.exe -L --fail -o "installer\tessdata\san.traineddata" "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/san.traineddata"
           Write-Host "  -> $(([math]::Round((Get-Item 'installer\tessdata\san.traineddata').Length/1MB,1))) MB"
 
       - name: Verify Tesseract components present
