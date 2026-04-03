@@ -410,6 +410,48 @@ const UI = (() => {
     if (!window.pywebview) setTimeout(init, 500);
   });
 
+  // ── Settings modal ─────────────────────────────────────────────────────────
+
+  async function showSettings() {
+    const prefs = await App.pyCall("get_prefs");
+    const isDark = !document.body.classList.contains("light");
+
+    document.getElementById("settingsLang").value = prefs.ocr_lang || "hin+san+eng";
+    document.getElementById("settingsDpi").value  = String(prefs.default_dpi || 150);
+    _refreshThemeButtons(isDark ? "dark" : "light");
+
+    document.getElementById("settingsModal").classList.add("visible");
+  }
+
+  function closeSettings() {
+    document.getElementById("settingsModal").classList.remove("visible");
+  }
+
+  function setTheme(theme) {
+    if (theme === "light") document.body.classList.add("light");
+    else                   document.body.classList.remove("light");
+    _refreshThemeButtons(theme);
+  }
+
+  function _refreshThemeButtons(active) {
+    document.getElementById("btnThemeDark").classList.toggle("active",  active === "dark");
+    document.getElementById("btnThemeLight").classList.toggle("active", active === "light");
+  }
+
+  async function saveSettings() {
+    const lang  = document.getElementById("settingsLang").value.trim() || "hin+san+eng";
+    const dpi   = parseInt(document.getElementById("settingsDpi").value) || 150;
+    const theme = document.body.classList.contains("light") ? "light" : "dark";
+
+    await App.pyCall("save_prefs", { theme, default_dpi: dpi, ocr_lang: lang });
+    closeSettings();
+    status("Settings saved.");
+  }
+
+  document.getElementById("settingsModal").addEventListener("click", e => {
+    if (e.target.id === "settingsModal") closeSettings();
+  });
+
   // ── Parse modal ────────────────────────────────────────────────────────────
 
   let _pollTimer = null;
@@ -450,7 +492,8 @@ const UI = (() => {
     const selected = [...document.querySelectorAll(".parse-page-cb:checked")].map(cb => parseInt(cb.value));
     if (!selected.length) { status("Select at least one page."); return; }
 
-    const lang    = document.getElementById("parseLangInput").value.trim() || "hin+san+eng";
+    const prefs   = await App.pyCall("get_prefs");
+    const lang    = prefs.ocr_lang || "hin+san+eng";
     const wantTxt  = document.getElementById("fmtTxt").checked;
     const wantJson = document.getElementById("fmtJson").checked;
     if (!wantTxt && !wantJson) { status("Select at least one output format."); return; }
@@ -582,6 +625,11 @@ const UI = (() => {
     closeModal,
     pickCustomColor,
     status,
+    // Settings
+    showSettings,
+    closeSettings,
+    setTheme,
+    saveSettings,
     // Parse
     showParseModal,
     closeParseModal,

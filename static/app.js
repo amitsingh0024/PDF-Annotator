@@ -870,7 +870,7 @@ const App = (() => {
       case "g": case "G": setTool("polygon");  break;
       case "f": case "F": setTool("freehand"); break;
       case "e": case "E": setTool("eraser");   break;
-      case "t": case "T": UI.toggleTheme();   break;
+      case "t": case "T": UI.showSettings();  break;
       case "0":           fitPage();           break;
       case "+": case "=": zoom(0.1);           break;
       case "-":           zoom(-0.1);          break;

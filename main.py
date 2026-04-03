@@ -110,7 +110,7 @@ def _load_prefs() -> dict:
             return json.loads(PREFS_FILE.read_text())
         except Exception:
             pass
-    return {"theme": "dark", "default_dpi": 150}
+    return {"theme": "dark", "default_dpi": 150, "ocr_lang": "hin+san+eng"}
 
 
 def _save_prefs(prefs: dict) -> None:
