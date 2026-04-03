@@ -20,6 +20,10 @@ if errorlevel 1 (echo ERROR: PyInstaller install failed & pause & exit /b 1)
 
 :: 3. Build
 echo [3/4] Building executable...
+echo NOTE: Tesseract OCR engine must be installed separately on the target machine.
+echo       Download from: https://github.com/tesseract-ocr/tesseract
+echo       Hindi+Sanskrit data files (hin.traineddata, san.traineddata) must be in Tesseract tessdata folder.
+echo.
 pyinstaller ^
   --onefile ^
   --noconsole ^
@@ -28,6 +32,7 @@ pyinstaller ^
   --hidden-import "pypdfium2" ^
   --hidden-import "webview" ^
   --hidden-import "PIL" ^
+  --hidden-import "pytesseract" ^
   --icon "static\icon.ico" ^
   main.py
 

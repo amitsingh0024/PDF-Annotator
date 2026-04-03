@@ -9,11 +9,55 @@ import hashlib
 import io
 import json
 import os
+import threading
 import time
 from pathlib import Path
 
 import pypdfium2 as pdfium
 import webview
+
+try:
+    import pytesseract
+    _TESSERACT_OK = True
+except ImportError:
+    _TESSERACT_OK = False
+
+def _setup_tesseract() -> None:
+    """On Windows, find the Tesseract binary via the registry and point
+    pytesseract at it so it works even when Tesseract is not on PATH."""
+    import platform
+    if platform.system() != "Windows":
+        return  # macOS / Linux: tesseract is expected to be on PATH
+
+    import winreg
+    candidates: list[str] = []
+
+    for hive, subkey in [
+        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Tesseract-OCR"),
+        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Tesseract-OCR"),
+    ]:
+        try:
+            key = winreg.OpenKey(hive, subkey)
+            value, _ = winreg.QueryValueEx(key, "InstallDir")
+            winreg.CloseKey(key)
+            candidates.append(str(value))
+        except Exception:
+            pass
+
+    # Fallback to known default locations
+    candidates += [
+        r"C:\Program Files\Tesseract-OCR",
+        r"C:\Program Files (x86)\Tesseract-OCR",
+    ]
+
+    for d in candidates:
+        exe = os.path.join(d, "tesseract.exe")
+        if os.path.exists(exe):
+            pytesseract.pytesseract.tesseract_cmd = exe
+            return
+
+if _TESSERACT_OK:
+    _setup_tesseract()
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 
@@ -31,6 +75,18 @@ _current_pdf: pdfium.PdfDocument | None = None
 _current_pdf_path: str = ""
 _current_pdf_hash: str = ""
 _window: webview.Window | None = None   # set after create_window
+
+_ocr_state: dict = {
+    "running":     False,
+    "cancel":      False,
+    "current":     0,
+    "total":       0,
+    "status":      "",
+    "done":        False,
+    "error":       "",
+    "result_json": None,
+    "result_txt":  None,
+}
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -221,6 +277,208 @@ class API:
 
     def get_version(self) -> str:
         return "1.0.0"
+
+    # ── OCR Parse ──────────────────────────────────────────────────────────────
+
+    def get_annotated_pages(self) -> list:
+        """Return sorted list of 1-based page numbers that have at least one active (non-ignore) region."""
+        if not _current_pdf_path:
+            return []
+        ann_path = _annotation_path(_current_pdf_path)
+        if not ann_path.exists():
+            return []
+        try:
+            ann = json.loads(ann_path.read_text(encoding="utf-8"))
+            ignore_ids = {
+                lbl["id"] for lbl in ann.get("labels", [])
+                if lbl.get("name", "").lower() == "ignore"
+            }
+            result = []
+            for page_key, regions in ann.get("pages", {}).items():
+                if any(r.get("label") not in ignore_ids for r in regions):
+                    result.append(int(page_key))
+            return sorted(result)
+        except Exception:
+            return []
+
+    def start_ocr_parse(self, pages: list, lang: str) -> dict:
+        """Start OCR parsing in a background thread."""
+        global _ocr_state
+        if not _TESSERACT_OK:
+            return {"error": "pytesseract is not installed. Run: pip install pytesseract"}
+        if _ocr_state.get("running"):
+            return {"error": "OCR already running"}
+        if not _current_pdf_path:
+            return {"error": "No PDF open"}
+        if not pages:
+            return {"error": "No pages selected"}
+
+        _ocr_state = {
+            "running":     True,
+            "cancel":      False,
+            "current":     0,
+            "total":       len(pages),
+            "status":      "Starting…",
+            "done":        False,
+            "error":       "",
+            "result_json": None,
+            "result_txt":  None,
+        }
+        t = threading.Thread(
+            target=self._ocr_worker,
+            args=(list(pages), str(lang)),
+            daemon=True,
+        )
+        t.start()
+        return {"ok": True}
+
+    def get_parse_progress(self) -> dict:
+        return dict(_ocr_state)
+
+    def cancel_ocr_parse(self) -> dict:
+        global _ocr_state
+        _ocr_state["cancel"] = True
+        return {"ok": True}
+
+    def save_parsed_output(self, content: str, fmt: str) -> dict:
+        """Show native Save-As dialog and write the parsed output."""
+        if not _current_pdf_path:
+            return {"error": "No PDF open"}
+        stem = Path(_current_pdf_path).stem
+        default_name = stem + "_parsed." + fmt
+        file_types = (
+            ("Text Files (*.txt)",) if fmt == "txt" else ("JSON Files (*.json)",)
+        )
+        result = _window.create_file_dialog(
+            webview.FileDialog.SAVE,
+            save_filename=default_name,
+            file_types=file_types,
+        )
+        if not result:
+            return {"cancelled": True}
+        save_path = result if isinstance(result, str) else result[0]
+        try:
+            Path(save_path).write_text(content, encoding="utf-8")
+            return {"ok": True, "path": save_path}
+        except Exception as e:
+            return {"error": str(e)}
+
+    def _ocr_worker(self, pages: list, lang: str) -> None:
+        global _ocr_state
+        try:
+            ann_path = _annotation_path(_current_pdf_path)
+            ann      = json.loads(ann_path.read_text(encoding="utf-8"))
+            labels   = ann.get("labels", [])
+            ann_pages = ann.get("pages", {})
+
+            ignore_ids = {
+                lbl["id"] for lbl in labels
+                if lbl.get("name", "").lower() == "ignore"
+            }
+            label_map = {lbl["id"]: lbl["name"] for lbl in labels}
+
+            doc = pdfium.PdfDocument(_current_pdf_path)
+            all_pages: dict = {}
+
+            for i, page_num in enumerate(pages):
+                if _ocr_state["cancel"]:
+                    _ocr_state.update({"status": "Cancelled", "running": False})
+                    return
+
+                _ocr_state["current"] = i + 1
+                _ocr_state["status"]  = f"Page {page_num} — rendering…"
+
+                page_key = str(page_num)
+                regions  = ann_pages.get(page_key, [])
+                active   = [r for r in regions if r.get("label") not in ignore_ids]
+                chunks: list = []
+
+                if active:
+                    bitmap = doc[page_num - 1].render(scale=300 / 72, rotation=0)
+                    img    = bitmap.to_pil()
+
+                    def _top_y(r):
+                        if "pts" in r:
+                            return min(p["y"] for p in r["pts"])
+                        return r.get("y", 0)
+
+                    for r in sorted(active, key=_top_y):
+                        if _ocr_state["cancel"]:
+                            _ocr_state.update({"status": "Cancelled", "running": False})
+                            return
+
+                        lname = label_map.get(r.get("label", ""), r.get("label", "text"))
+
+                        if "pts" in r:
+                            xs = [p["x"] for p in r["pts"]]
+                            ys = [p["y"] for p in r["pts"]]
+                            x, y = min(xs), min(ys)
+                            w, h = max(xs) - x, max(ys) - y
+                        else:
+                            x, y, w, h = r["x"], r["y"], r["w"], r["h"]
+
+                        iw, ih = img.size
+                        crop = img.crop((
+                            int(x * iw), int(y * ih),
+                            int((x + w) * iw), int((y + h) * ih),
+                        ))
+
+                        _ocr_state["status"] = f"Page {page_num} — OCR [{lname}]…"
+                        text = pytesseract.image_to_string(crop, lang=lang).strip()
+
+                        if text:
+                            chunks.append({
+                                "page":   page_num,
+                                "label":  lname,
+                                "source": "annotated",
+                                "text":   text,
+                                "note":   r.get("note", ""),
+                                "bbox":   {
+                                    "x": round(x, 4), "y": round(y, 4),
+                                    "w": round(w, 4), "h": round(h, 4),
+                                },
+                            })
+
+                all_pages[page_key] = chunks
+
+            # ── Build JSON output ──────────────────────────────────────────────
+            all_chunks = [c for clist in all_pages.values() for c in clist]
+            result_data = {
+                "source":       Path(_current_pdf_path).name,
+                "lang":         lang,
+                "dpi":          300,
+                "pages_parsed": len(pages),
+                "pages":        all_pages,
+            }
+            result_json = json.dumps(result_data, ensure_ascii=False, indent=2)
+
+            # ── Build TXT output ───────────────────────────────────────────────
+            lines = []
+            for page_num in pages:
+                page_key = str(page_num)
+                chunks   = all_pages.get(page_key, [])
+                if not chunks:
+                    continue
+                lines.append("=" * 60)
+                lines.append(f"  PAGE {page_num}")
+                lines.append("=" * 60)
+                lines.append("")
+                for c in chunks:
+                    lines.append(f"[{c['label'].upper()}]")
+                    lines.append(c["text"])
+                    lines.append("")
+            result_txt = "\n".join(lines)
+
+            _ocr_state.update({
+                "result_json": result_json,
+                "result_txt":  result_txt,
+                "status":      f"Done — {len(all_chunks)} regions from {len(pages)} page(s)",
+                "done":        True,
+                "running":     False,
+            })
+
+        except Exception as e:
+            _ocr_state.update({"error": str(e), "running": False, "done": False})
 
 
 # ── Entry point ────────────────────────────────────────────────────────────────

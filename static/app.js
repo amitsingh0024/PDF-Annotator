@@ -793,7 +793,8 @@ const App = (() => {
 
     document.getElementById("pageTotalLabel").textContent = `/ ${info.page_count}`;
     document.getElementById("pageInput").max = info.page_count;
-    document.getElementById("btnSave").disabled = false;
+    document.getElementById("btnSave").disabled  = false;
+    document.getElementById("btnParse").disabled = false;
     document.getElementById("dropZone").classList.add("hidden");
 
     UI.renderLabelBar();

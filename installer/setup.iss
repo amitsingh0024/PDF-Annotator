@@ -56,12 +56,20 @@ DisableProgramGroupPage  = yes
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "desktopicon";   Description: "Create a &desktop shortcut";   GroupDescription: "Additional icons:"; Flags: unchecked
-Name: "quicklaunch";   Description: "Pin to &taskbar";              GroupDescription: "Additional icons:"; Flags: unchecked; OnlyBelowVersion: 6.1; Check: not IsAdminInstallMode
+Name: "desktopicon";   Description: "Create a &desktop shortcut";                              GroupDescription: "Additional icons:"; Flags: unchecked
+Name: "quicklaunch";   Description: "Pin to &taskbar";                                         GroupDescription: "Additional icons:"; Flags: unchecked; OnlyBelowVersion: 6.1; Check: not IsAdminInstallMode
+Name: "tesseract";     Description: "Install &Tesseract OCR engine (required for Parse PDF)";  GroupDescription: "Components:"; Flags: checkedonce
 
 [Files]
 ; Main executable (built by PyInstaller)
 Source: "{#SourcePath}\..\dist\{#AppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+
+; ── Tesseract OCR — bundled installer + language data ─────────────────────────
+; These files are extracted to {tmp} then installed/copied in the [Code] section.
+; They are auto-deleted when setup exits.
+Source: "{#SourcePath}\tesseract-ocr-w64-setup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall; Tasks: tesseract
+Source: "{#SourcePath}\tessdata\hin.traineddata";     DestDir: "{tmp}\tessdata"; Flags: deleteafterinstall; Tasks: tesseract
+Source: "{#SourcePath}\tessdata\san.traineddata";     DestDir: "{tmp}\tessdata"; Flags: deleteafterinstall; Tasks: tesseract
 
 [Icons]
 ; Start menu
@@ -80,8 +88,8 @@ Filename: "{app}\{#AppExeName}"; Description: "Launch {#AppName}"; Flags: nowait
 ; Type: filesandordirs; Name: "{userdocs}\PDFAnnotator"
 
 [Code]
-// Check for WebView2 runtime (required by pywebview on Windows)
-// If missing, download and install it silently before finishing setup.
+
+// ── WebView2 ──────────────────────────────────────────────────────────────────
 
 function WebView2IsInstalled: Boolean;
 var
@@ -90,15 +98,13 @@ begin
   Result := RegQueryStringValue(
     HKLM,
     'SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}',
-    'pv',
-    Version
+    'pv', Version
   ) and (Version <> '');
   if not Result then
     Result := RegQueryStringValue(
       HKCU,
       'SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}',
-      'pv',
-      Version
+      'pv', Version
     ) and (Version <> '');
 end;
 
@@ -126,8 +132,84 @@ begin
   Exec(TempFile, '/silent /install', '', SW_SHOW, ewWaitUntilTerminated, ResultCode);
 end;
 
+// ── Tesseract OCR ─────────────────────────────────────────────────────────────
+
+// Returns the Tesseract install directory, reading the registry first then
+// falling back to the default Program Files path.
+function GetTesseractDir: String;
+var
+  Dir: String;
+begin
+  if RegQueryStringValue(HKLM, 'SOFTWARE\Tesseract-OCR', 'InstallDir', Dir) and (Dir <> '') then begin
+    Result := Dir; Exit;
+  end;
+  if RegQueryStringValue(HKLM, 'SOFTWARE\WOW6432Node\Tesseract-OCR', 'InstallDir', Dir) and (Dir <> '') then begin
+    Result := Dir; Exit;
+  end;
+  Result := ExpandConstant('{pf}\Tesseract-OCR');
+end;
+
+function TesseractIsInstalled: Boolean;
+begin
+  Result := FileExists(AddBackslash(GetTesseractDir) + 'tesseract.exe');
+end;
+
+// Copies the bundled .traineddata files into Tesseract's tessdata folder.
+// Called both after a fresh Tesseract install and when Tesseract already exists.
+procedure CopyTessdata;
+var
+  TessdataDir, TmpTessdata: String;
+begin
+  TessdataDir  := AddBackslash(GetTesseractDir) + 'tessdata\';
+  TmpTessdata  := ExpandConstant('{tmp}\tessdata\');
+  if not DirExists(TessdataDir) then
+    CreateDir(TessdataDir);
+  if FileExists(TmpTessdata + 'hin.traineddata') then
+    FileCopy(TmpTessdata + 'hin.traineddata', TessdataDir + 'hin.traineddata', False);
+  if FileExists(TmpTessdata + 'san.traineddata') then
+    FileCopy(TmpTessdata + 'san.traineddata', TessdataDir + 'san.traineddata', False);
+end;
+
+// Runs the bundled Tesseract installer silently, then copies language data.
+procedure InstallTesseract;
+var
+  ResultCode: Integer;
+  TessExe: String;
+begin
+  TessExe := ExpandConstant('{tmp}\tesseract-ocr-w64-setup.exe');
+  if not FileExists(TessExe) then begin
+    MsgBox(
+      'Tesseract installer could not be found in the package.'#13#10 +
+      'The "Parse PDF" feature will not work.'#13#10 +
+      'You can install Tesseract manually from:'#13#10 +
+      'https://github.com/UB-Mannheim/tesseract/wiki',
+      mbError, MB_OK
+    );
+    Exit;
+  end;
+
+  // /S = NSIS silent install; installs to default location (Program Files\Tesseract-OCR)
+  if not Exec(TessExe, '/S', '', SW_SHOW, ewWaitUntilTerminated, ResultCode) or
+     (ResultCode <> 0) then begin
+    MsgBox(
+      'Tesseract OCR installation failed (exit code: ' + IntToStr(ResultCode) + ').'#13#10 +
+      'The "Parse PDF" feature will not work.'#13#10 +
+      'You can install Tesseract manually from:'#13#10 +
+      'https://github.com/UB-Mannheim/tesseract/wiki',
+      mbError, MB_OK
+    );
+    Exit;
+  end;
+
+  // Install succeeded — copy Hindi/Sanskrit language data
+  CopyTessdata;
+end;
+
+// ── Installation steps ────────────────────────────────────────────────────────
+
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
+  // ssInstall  = just before files are written
   if CurStep = ssInstall then begin
     if not WebView2IsInstalled then begin
       if MsgBox(
@@ -137,6 +219,19 @@ begin
         mbInformation, MB_OKCANCEL
       ) = IDOK then
         InstallWebView2;
+    end;
+  end;
+
+  // ssPostInstall = after all app files are written; run Tesseract install now
+  // so {tmp} tessdata files are still present (deleteafterinstall cleans up
+  // only at the very end of the wizard).
+  if CurStep = ssPostInstall then begin
+    if WizardIsTaskSelected('tesseract') then begin
+      if TesseractIsInstalled then
+        // Already installed — just add the language files
+        CopyTessdata
+      else
+        InstallTesseract;
     end;
   end;
 end;

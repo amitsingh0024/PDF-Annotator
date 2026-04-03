@@ -54,7 +54,58 @@ jobs:
           Write-Host "Executable size: $([math]::Round($size,1)) MB"
         shell: pwsh
 
-      # ── 6. Build installer with Inno Setup ────────────────────────────────────
+      # ── 6. Download Tesseract components (bundled into the installer) ───────────
+      - name: Cache Tesseract components
+        id: cache-tesseract
+        uses: actions/cache@v4
+        with:
+          path: |
+            installer/tesseract-ocr-w64-setup.exe
+            installer/tessdata/hin.traineddata
+            installer/tessdata/san.traineddata
+          key: tesseract-v5.5.0-tessdata-fast-hin-san
+
+      - name: Download Tesseract installer and language data
+        if: steps.cache-tesseract.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "installer\tessdata" | Out-Null
+
+          Write-Host "Downloading Tesseract installer..."
+          Invoke-WebRequest `
+            -Uri "https://github.com/UB-Mannheim/tesseract/releases/download/v5.5.0.20231217/tesseract-ocr-w64-setup-5.5.0.20231217.exe" `
+            -OutFile "installer\tesseract-ocr-w64-setup.exe" `
+            -UseBasicParsing
+          Write-Host "  -> $(([math]::Round((Get-Item 'installer\tesseract-ocr-w64-setup.exe').Length/1MB,1))) MB"
+
+          Write-Host "Downloading Hindi language data..."
+          Invoke-WebRequest `
+            -Uri "https://github.com/tesseract-ocr/tessdata_fast/raw/main/hin.traineddata" `
+            -OutFile "installer\tessdata\hin.traineddata" `
+            -UseBasicParsing
+          Write-Host "  -> $(([math]::Round((Get-Item 'installer\tessdata\hin.traineddata').Length/1MB,1))) MB"
+
+          Write-Host "Downloading Sanskrit language data..."
+          Invoke-WebRequest `
+            -Uri "https://github.com/tesseract-ocr/tessdata_fast/raw/main/san.traineddata" `
+            -OutFile "installer\tessdata\san.traineddata" `
+            -UseBasicParsing
+          Write-Host "  -> $(([math]::Round((Get-Item 'installer\tessdata\san.traineddata').Length/1MB,1))) MB"
+
+      - name: Verify Tesseract components present
+        shell: pwsh
+        run: |
+          $missing = @()
+          if (-not (Test-Path "installer\tesseract-ocr-w64-setup.exe")) { $missing += "tesseract-ocr-w64-setup.exe" }
+          if (-not (Test-Path "installer\tessdata\hin.traineddata"))     { $missing += "hin.traineddata" }
+          if (-not (Test-Path "installer\tessdata\san.traineddata"))     { $missing += "san.traineddata" }
+          if ($missing.Count -gt 0) {
+            Write-Error "Missing Tesseract components: $($missing -join ', ')"
+            exit 1
+          }
+          Write-Host "All Tesseract components present."
+
+      # ── 7. Build installer with Inno Setup ────────────────────────────────────
       - name: Build installer (Inno Setup)
         run: |
           New-Item -ItemType Directory -Force -Path "installer\Output"
@@ -72,7 +123,7 @@ jobs:
           Write-Host "Installer size: $([math]::Round($size,1)) MB"
         shell: pwsh
 
-      # ── 7. Upload installer as artifact (always available) ────────────────────
+      # ── 8. Upload installer as artifact (always available) ────────────────────
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
@@ -80,7 +131,7 @@ jobs:
           path: installer\Output\PDFAnnotatorSetup.exe
           retention-days: 30
 
-      # ── 8. Create GitHub Release (only on version tags) ───────────────────────
+      # ── 9. Create GitHub Release (only on version tags) ───────────────────────
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
@@ -91,13 +142,18 @@ jobs:
 
             ### Install
             1. Download `PDFAnnotatorSetup.exe` below
-            2. Double-click to install
+            2. Double-click to install — no extra setup needed
             3. Launch from Start Menu or Desktop shortcut
+
+            ### What's included
+            - PDF Annotation Studio (annotate PDFs with labeled regions)
+            - **Tesseract OCR** (optional, selected by default) — enables the Parse PDF feature
+            - **Hindi + Sanskrit language data** — bundled, no internet needed during install
+            - Microsoft WebView2 (downloaded automatically if missing, ~2 MB)
 
             ### Requirements
             - Windows 10 or 11 (64-bit)
-            - ~80 MB disk space
-            - Internet connection on first run (downloads WebView2 if not present)
+            - ~200 MB disk space (includes Tesseract + language data)
 
             ### What's new
             See commit history for changes in this release.

@@ -32,9 +32,62 @@ if errorlevel 1 (
 )
 echo  Dependencies installed.
 
-:: ── Step 3: Generate icon ─────────────────────────────────────────────────────
+:: ── Step 3: Download Tesseract OCR components ────────────────────────────────
 echo.
-echo [3/5] Generating app icon...
+echo [3/5] Preparing Tesseract OCR components...
+echo  (These are bundled into the installer so end-users don't need to download them)
+echo.
+
+if not exist "installer\tessdata" mkdir installer\tessdata
+
+:: Tesseract Windows installer (UB-Mannheim build, v5.5)
+if not exist "installer\tesseract-ocr-w64-setup.exe" (
+    echo  Downloading Tesseract installer...
+    powershell -NoProfile -NonInteractive -Command "Invoke-WebRequest -Uri 'https://github.com/UB-Mannheim/tesseract/releases/download/v5.5.0.20231217/tesseract-ocr-w64-setup-5.5.0.20231217.exe' -OutFile 'installer\tesseract-ocr-w64-setup.exe' -UseBasicParsing"
+    if errorlevel 1 (
+        echo  ERROR: Could not download Tesseract installer.
+        echo  Download manually from: https://github.com/UB-Mannheim/tesseract/wiki
+        echo  Save it as: installer\tesseract-ocr-w64-setup.exe
+        pause & exit /b 1
+    )
+    echo  Tesseract installer downloaded.
+) else (
+    echo  Tesseract installer already present, skipping download.
+)
+
+:: Hindi language data (tessdata_fast — fast + accurate enough for print)
+if not exist "installer\tessdata\hin.traineddata" (
+    echo  Downloading Hindi language data...
+    powershell -NoProfile -NonInteractive -Command "Invoke-WebRequest -Uri 'https://github.com/tesseract-ocr/tessdata_fast/raw/main/hin.traineddata' -OutFile 'installer\tessdata\hin.traineddata' -UseBasicParsing"
+    if errorlevel 1 (
+        echo  ERROR: Could not download Hindi language data (hin.traineddata).
+        echo  Download manually from: https://github.com/tesseract-ocr/tessdata_fast
+        pause & exit /b 1
+    )
+    echo  Hindi language data downloaded.
+) else (
+    echo  Hindi language data already present, skipping download.
+)
+
+:: Sanskrit language data
+if not exist "installer\tessdata\san.traineddata" (
+    echo  Downloading Sanskrit language data...
+    powershell -NoProfile -NonInteractive -Command "Invoke-WebRequest -Uri 'https://github.com/tesseract-ocr/tessdata_fast/raw/main/san.traineddata' -OutFile 'installer\tessdata\san.traineddata' -UseBasicParsing"
+    if errorlevel 1 (
+        echo  ERROR: Could not download Sanskrit language data (san.traineddata).
+        echo  Download manually from: https://github.com/tesseract-ocr/tessdata_fast
+        pause & exit /b 1
+    )
+    echo  Sanskrit language data downloaded.
+) else (
+    echo  Sanskrit language data already present, skipping download.
+)
+
+echo  All Tesseract components ready.
+
+:: ── Step 3b: Generate icon ────────────────────────────────────────────────────
+echo.
+echo [3b/5] Generating app icon...
 if not exist "installer\icon.ico" (
     python installer\create_icon.py
     if errorlevel 1 (

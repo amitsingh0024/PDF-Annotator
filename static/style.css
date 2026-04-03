@@ -581,3 +581,86 @@ html, body {
   0%   { box-shadow: 0 0 0 0 rgba(99,102,241,0.6); }
   100% { box-shadow: 0 0 0 8px rgba(99,102,241,0); }
 }
+
+/* ── Parse toolbar button ────────────────────────────────────────────────────── */
+.tb-btn-parse { color: var(--accent); }
+.tb-btn-parse:not(:disabled):hover { background: var(--accent); color: #fff; }
+
+/* ── Parse overlay modals ────────────────────────────────────────────────────── */
+.parse-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.65);
+  z-index: 500;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.parse-overlay.visible { display: flex; }
+
+.parse-modal-box { min-width: 420px; max-width: 540px; max-height: 80vh; overflow-y: auto; }
+
+/* ── Parse sections ──────────────────────────────────────────────────────────── */
+.parse-section { margin-bottom: 18px; }
+.parse-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.parse-section-label { display: block; font-size: 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+.parse-section-header .parse-section-label { margin-bottom: 0; }
+
+/* ── Page checklist ──────────────────────────────────────────────────────────── */
+.parse-page-btns { display: flex; gap: 5px; }
+.btn-xs {
+  padding: 2px 9px; font-size: 11px; border-radius: var(--radius);
+  border: 1px solid var(--border); background: var(--bg3); color: var(--text2);
+  cursor: pointer; transition: all 0.1s;
+}
+.btn-xs:hover { background: var(--border); color: var(--text); }
+
+.parse-page-list {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  max-height: 160px; overflow-y: auto;
+  padding: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+}
+.parse-page-check {
+  display: flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: var(--radius);
+  border: 1px solid var(--border); background: var(--bg2);
+  font-size: 12px; cursor: pointer; transition: border-color 0.1s;
+  white-space: nowrap;
+}
+.parse-page-check:hover { border-color: var(--accent); }
+.parse-page-check input { accent-color: var(--accent); cursor: pointer; }
+.parse-empty { font-size: 12.5px; color: var(--text3); padding: 4px 0; }
+
+/* ── Language input ──────────────────────────────────────────────────────────── */
+.parse-input {
+  width: 100%; padding: 7px 10px; border-radius: var(--radius);
+  border: 1px solid var(--border); background: var(--bg); color: var(--text);
+  font-size: 13px; outline: none; transition: border-color 0.15s;
+}
+.parse-input:focus { border-color: var(--accent); }
+.parse-hint { display: block; font-size: 11px; color: var(--text3); margin-top: 5px; }
+
+/* ── Output format checkboxes ────────────────────────────────────────────────── */
+.parse-check {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 13px; cursor: pointer; padding: 3px 0;
+}
+.parse-check input { accent-color: var(--accent); cursor: pointer; }
+
+/* ── Progress bar ────────────────────────────────────────────────────────────── */
+.parse-progress-wrap { margin: 6px 0 4px; }
+.parse-progress-track {
+  height: 8px; border-radius: 99px;
+  background: var(--bg3); overflow: hidden; margin-bottom: 10px;
+}
+.parse-progress-fill {
+  height: 100%; width: 0%; border-radius: 99px;
+  background: linear-gradient(90deg, var(--accent), #818cf8);
+  transition: width 0.4s ease;
+}
+.parse-progress-status { font-size: 13px; color: var(--text); margin-bottom: 4px; min-height: 18px; }
+.parse-progress-count  { font-size: 12px; color: var(--text2); }
+
+@keyframes parse-indeterminate {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(400%);  }
+}

@@ -410,6 +410,160 @@ const UI = (() => {
     if (!window.pywebview) setTimeout(init, 500);
   });
 
+  // ── Parse modal ────────────────────────────────────────────────────────────
+
+  let _pollTimer = null;
+
+  async function showParseModal() {
+    // Auto-save first so the annotation file on disk is current
+    if (App.state.dirty) await App.saveAnnotations(true);
+
+    const pages = await App.pyCall("get_annotated_pages");
+    const list  = document.getElementById("parsePageList");
+    list.innerHTML = "";
+
+    if (!pages || !pages.length) {
+      list.innerHTML = '<p class="parse-empty">No annotated pages found.<br>Draw regions on pages first, then save.</p>';
+      document.getElementById("btnStartParse").disabled = true;
+    } else {
+      document.getElementById("btnStartParse").disabled = false;
+      pages.forEach(p => {
+        const lbl = document.createElement("label");
+        lbl.className = "parse-page-check";
+        lbl.innerHTML = `<input type="checkbox" class="parse-page-cb" value="${p}" checked> Page ${p}`;
+        list.appendChild(lbl);
+      });
+    }
+
+    document.getElementById("parseModal").classList.add("visible");
+  }
+
+  function closeParseModal() {
+    document.getElementById("parseModal").classList.remove("visible");
+  }
+
+  function selectAllParsePages(checked) {
+    document.querySelectorAll(".parse-page-cb").forEach(cb => { cb.checked = checked; });
+  }
+
+  async function startParse() {
+    const selected = [...document.querySelectorAll(".parse-page-cb:checked")].map(cb => parseInt(cb.value));
+    if (!selected.length) { status("Select at least one page."); return; }
+
+    const lang    = document.getElementById("parseLangInput").value.trim() || "hin+san+eng";
+    const wantTxt  = document.getElementById("fmtTxt").checked;
+    const wantJson = document.getElementById("fmtJson").checked;
+    if (!wantTxt && !wantJson) { status("Select at least one output format."); return; }
+
+    closeParseModal();
+    _openProgressModal(selected.length, wantTxt, wantJson);
+
+    const res = await App.pyCall("start_ocr_parse", selected, lang);
+    if (res.error) {
+      _setProgressError(res.error);
+      return;
+    }
+    _pollTimer = setInterval(() => _pollProgress(wantTxt, wantJson), 500);
+  }
+
+  function _openProgressModal(total, wantTxt, wantJson) {
+    document.getElementById("parseProgressTitle").textContent = "Parsing PDF…";
+    document.getElementById("parseProgressFill").style.width  = "0%";
+    document.getElementById("parseProgressStatus").textContent = "Starting…";
+    document.getElementById("parseProgressCount").textContent  = `0 / ${total} pages`;
+    const actions = document.getElementById("parseProgressActions");
+    actions.innerHTML = '<button class="btn" id="btnCancelParse" onclick="UI.cancelParse()">Cancel</button>';
+    document.getElementById("parseProgressModal").classList.add("visible");
+  }
+
+  async function _pollProgress(wantTxt, wantJson) {
+    const p = await App.pyCall("get_parse_progress");
+    if (!p) return;
+
+    const pct = p.total > 0 ? Math.round((p.current / p.total) * 100) : 0;
+    document.getElementById("parseProgressFill").style.width  = pct + "%";
+    document.getElementById("parseProgressStatus").textContent = p.status || "";
+    document.getElementById("parseProgressCount").textContent  =
+      p.total > 0 ? `${p.current} / ${p.total} pages` : "";
+
+    if (p.error) {
+      clearInterval(_pollTimer);
+      _setProgressError(p.error);
+      return;
+    }
+
+    if (p.done) {
+      clearInterval(_pollTimer);
+      document.getElementById("parseProgressFill").style.width = "100%";
+      document.getElementById("parseProgressTitle").textContent = "Parse Complete";
+
+      // Build save buttons for the formats requested
+      const actions = document.getElementById("parseProgressActions");
+      actions.innerHTML = "";
+
+      const closeBtn = document.createElement("button");
+      closeBtn.className   = "btn";
+      closeBtn.textContent = "Close";
+      closeBtn.onclick     = closeParseProgressModal;
+      actions.appendChild(closeBtn);
+
+      if (wantTxt) {
+        const btn = document.createElement("button");
+        btn.className   = "btn primary";
+        btn.textContent = "Save as TXT";
+        btn.onclick     = () => _saveParsedAs("txt", p.result_txt);
+        actions.appendChild(btn);
+      }
+      if (wantJson) {
+        const btn = document.createElement("button");
+        btn.className   = "btn primary";
+        btn.textContent = "Save as JSON";
+        btn.onclick     = () => _saveParsedAs("json", p.result_json);
+        actions.appendChild(btn);
+      }
+    }
+  }
+
+  function _setProgressError(msg) {
+    document.getElementById("parseProgressTitle").textContent  = "Parse Failed";
+    document.getElementById("parseProgressStatus").textContent = msg;
+    document.getElementById("parseProgressFill").style.background = "var(--danger)";
+    const actions = document.getElementById("parseProgressActions");
+    actions.innerHTML = '<button class="btn" onclick="UI.closeParseProgressModal()">Close</button>';
+  }
+
+  function closeParseProgressModal() {
+    clearInterval(_pollTimer);
+    document.getElementById("parseProgressModal").classList.remove("visible");
+    document.getElementById("parseProgressFill").style.background = "";
+  }
+
+  async function cancelParse() {
+    await App.pyCall("cancel_ocr_parse");
+    clearInterval(_pollTimer);
+    document.getElementById("parseProgressTitle").textContent  = "Cancelled";
+    document.getElementById("parseProgressStatus").textContent = "Parse was cancelled.";
+    const actions = document.getElementById("parseProgressActions");
+    actions.innerHTML = '<button class="btn" onclick="UI.closeParseProgressModal()">Close</button>';
+  }
+
+  async function _saveParsedAs(fmt, content) {
+    const res = await App.pyCall("save_parsed_output", content, fmt);
+    if (res.error)      { status("Save failed: " + res.error); return; }
+    if (res.cancelled)  return;
+    status(`Saved: ${res.path}`);
+  }
+
+  // Close parse overlays on outside click
+  ["parseModal", "parseProgressModal"].forEach(id => {
+    document.getElementById(id).addEventListener("click", e => {
+      if (e.target.id === id) {
+        if (id === "parseModal") closeParseModal();
+        else closeParseProgressModal();
+      }
+    });
+  });
+
   // ── Public ─────────────────────────────────────────────────────────────────
   return {
     toggleTheme,
@@ -428,6 +582,13 @@ const UI = (() => {
     closeModal,
     pickCustomColor,
     status,
+    // Parse
+    showParseModal,
+    closeParseModal,
+    selectAllParsePages,
+    startParse,
+    cancelParse,
+    closeParseProgressModal,
   };
 
 })();

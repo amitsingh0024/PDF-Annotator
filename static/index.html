@@ -24,6 +24,10 @@
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
       Save
     </button>
+    <button class="tb-btn tb-btn-parse" id="btnParse" data-tip="Parse annotated pages with OCR" onclick="UI.showParseModal()" disabled>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      Parse
+    </button>
 
     <div class="tb-sep"></div>
 
@@ -181,5 +185,62 @@
 
 <script src="app.js"></script>
 <script src="ui.js"></script>
+
+<!-- ── Parse Options Modal ────────────────────────────────────────────────── -->
+<div id="parseModal" class="parse-overlay">
+  <div class="modal-box parse-modal-box">
+    <h3>Parse Annotated PDF</h3>
+
+    <div class="parse-section">
+      <div class="parse-section-header">
+        <span class="parse-section-label">Pages to parse</span>
+        <div class="parse-page-btns">
+          <button class="btn-xs" onclick="UI.selectAllParsePages(true)">All</button>
+          <button class="btn-xs" onclick="UI.selectAllParsePages(false)">None</button>
+        </div>
+      </div>
+      <div id="parsePageList" class="parse-page-list"></div>
+    </div>
+
+    <div class="parse-section">
+      <label class="parse-section-label" for="parseLangInput">OCR Language</label>
+      <input type="text" id="parseLangInput" class="parse-input" value="hin+san+eng" placeholder="e.g. eng or hin+san+eng">
+      <span class="parse-hint">Tesseract language codes joined with +</span>
+    </div>
+
+    <div class="parse-section">
+      <span class="parse-section-label">Output format</span>
+      <label class="parse-check"><input type="checkbox" id="fmtTxt" checked> Plain Text (.txt)</label>
+      <label class="parse-check"><input type="checkbox" id="fmtJson" checked> Structured JSON (.json)</label>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn" onclick="UI.closeParseModal()">Cancel</button>
+      <button class="btn primary" id="btnStartParse" onclick="UI.startParse()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Start Parse
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Parse Progress Modal ───────────────────────────────────────────────── -->
+<div id="parseProgressModal" class="parse-overlay">
+  <div class="modal-box parse-modal-box">
+    <h3 id="parseProgressTitle">Parsing PDF…</h3>
+
+    <div class="parse-progress-wrap">
+      <div class="parse-progress-track">
+        <div class="parse-progress-fill" id="parseProgressFill"></div>
+      </div>
+      <div id="parseProgressStatus" class="parse-progress-status">Starting…</div>
+      <div id="parseProgressCount" class="parse-progress-count"></div>
+    </div>
+
+    <div class="modal-actions" id="parseProgressActions">
+      <button class="btn" id="btnCancelParse" onclick="UI.cancelParse()">Cancel</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
