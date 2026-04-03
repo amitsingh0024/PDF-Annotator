@@ -71,6 +71,7 @@ Source: "{#SourcePath}\tesseract-ocr-w64-setup.exe"; DestDir: "{tmp}"; Flags: de
 ; ── Language data — copied directly into the app folder by Inno Setup ─────────
 ; This avoids any Pascal FileCopy permission issues.  main.py sets
 ; TESSDATA_PREFIX to {app} so Tesseract finds these files automatically.
+Source: "{#SourcePath}\tessdata\eng.traineddata"; DestDir: "{app}\tessdata"; Flags: ignoreversion; Tasks: tesseract
 Source: "{#SourcePath}\tessdata\hin.traineddata"; DestDir: "{app}\tessdata"; Flags: ignoreversion; Tasks: tesseract
 Source: "{#SourcePath}\tessdata\san.traineddata"; DestDir: "{app}\tessdata"; Flags: ignoreversion; Tasks: tesseract
 

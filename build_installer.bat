@@ -56,13 +56,27 @@ if not exist "installer\tesseract-ocr-w64-setup.exe" (
     echo  Tesseract installer already present, skipping download.
 )
 
-:: Hindi language data (tessdata_fast)
+:: English language data (tessdata_fast — sufficient for English)
+if not exist "installer\tessdata\eng.traineddata" (
+    echo  Downloading English language data...
+    curl.exe -L --fail -o "installer\tessdata\eng.traineddata" "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/eng.traineddata"
+    if errorlevel 1 (
+        echo  ERROR: Could not download English language data (eng.traineddata).
+        echo  Download manually from: https://github.com/tesseract-ocr/tessdata_fast
+        pause & exit /b 1
+    )
+    echo  English language data downloaded.
+) else (
+    echo  English language data already present, skipping download.
+)
+
+:: Hindi language data (tessdata_best — required for accurate Devanagari)
 if not exist "installer\tessdata\hin.traineddata" (
     echo  Downloading Hindi language data...
     curl.exe -L --fail -o "installer\tessdata\hin.traineddata" "https://raw.githubusercontent.com/tesseract-ocr/tessdata_best/main/hin.traineddata"
     if errorlevel 1 (
         echo  ERROR: Could not download Hindi language data (hin.traineddata).
-        echo  Download manually from: https://github.com/tesseract-ocr/tessdata_fast
+        echo  Download manually from: https://github.com/tesseract-ocr/tessdata_best
         pause & exit /b 1
     )
     echo  Hindi language data downloaded.
@@ -70,13 +84,13 @@ if not exist "installer\tessdata\hin.traineddata" (
     echo  Hindi language data already present, skipping download.
 )
 
-:: Sanskrit language data
+:: Sanskrit language data (tessdata_best — required for accurate Devanagari)
 if not exist "installer\tessdata\san.traineddata" (
     echo  Downloading Sanskrit language data...
     curl.exe -L --fail -o "installer\tessdata\san.traineddata" "https://raw.githubusercontent.com/tesseract-ocr/tessdata_best/main/san.traineddata"
     if errorlevel 1 (
         echo  ERROR: Could not download Sanskrit language data (san.traineddata).
-        echo  Download manually from: https://github.com/tesseract-ocr/tessdata_fast
+        echo  Download manually from: https://github.com/tesseract-ocr/tessdata_best
         pause & exit /b 1
     )
     echo  Sanskrit language data downloaded.

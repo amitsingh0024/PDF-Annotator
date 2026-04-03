@@ -76,6 +76,7 @@ jobs:
         with:
           path: |
             installer/tesseract-ocr-w64-setup.exe
+            installer/tessdata/eng.traineddata
             installer/tessdata/hin.traineddata
             installer/tessdata/san.traineddata
           key: tesseract-${{ steps.tess-version.outputs.tag }}-tessdata-best
@@ -96,11 +97,15 @@ jobs:
           curl.exe -L --fail -o "installer\tesseract-ocr-w64-setup.exe" $asset.browser_download_url
           Write-Host "  -> $(([math]::Round((Get-Item 'installer\tesseract-ocr-w64-setup.exe').Length/1MB,1))) MB"
 
-          Write-Host "Downloading Hindi language data..."
+          Write-Host "Downloading English language data (tessdata_fast)..."
+          curl.exe -L --fail -o "installer\tessdata\eng.traineddata" "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/eng.traineddata"
+          Write-Host "  -> $(([math]::Round((Get-Item 'installer\tessdata\eng.traineddata').Length/1MB,1))) MB"
+
+          Write-Host "Downloading Hindi language data (tessdata_best)..."
           curl.exe -L --fail -o "installer\tessdata\hin.traineddata" "https://raw.githubusercontent.com/tesseract-ocr/tessdata_best/main/hin.traineddata"
           Write-Host "  -> $(([math]::Round((Get-Item 'installer\tessdata\hin.traineddata').Length/1MB,1))) MB"
 
-          Write-Host "Downloading Sanskrit language data..."
+          Write-Host "Downloading Sanskrit language data (tessdata_best)..."
           curl.exe -L --fail -o "installer\tessdata\san.traineddata" "https://raw.githubusercontent.com/tesseract-ocr/tessdata_best/main/san.traineddata"
           Write-Host "  -> $(([math]::Round((Get-Item 'installer\tessdata\san.traineddata').Length/1MB,1))) MB"
 
@@ -109,6 +114,7 @@ jobs:
         run: |
           $missing = @()
           if (-not (Test-Path "installer\tesseract-ocr-w64-setup.exe")) { $missing += "tesseract-ocr-w64-setup.exe" }
+          if (-not (Test-Path "installer\tessdata\eng.traineddata"))     { $missing += "eng.traineddata" }
           if (-not (Test-Path "installer\tessdata\hin.traineddata"))     { $missing += "hin.traineddata" }
           if (-not (Test-Path "installer\tessdata\san.traineddata"))     { $missing += "san.traineddata" }
           if ($missing.Count -gt 0) {
