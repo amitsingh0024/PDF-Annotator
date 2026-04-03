@@ -25,10 +25,28 @@ except ImportError:
 
 def _setup_tesseract() -> None:
     """On Windows, find the Tesseract binary via the registry and point
-    pytesseract at it so it works even when Tesseract is not on PATH."""
+    pytesseract at it so it works even when Tesseract is not on PATH.
+
+    Also sets TESSDATA_PREFIX so Tesseract finds the Hindi/Sanskrit models
+    bundled alongside the app executable (installed to {app}\\tessdata\\ by
+    the Inno Setup installer)."""
     import platform
     if platform.system() != "Windows":
         return  # macOS / Linux: tesseract is expected to be on PATH
+
+    import sys
+
+    # When running as a PyInstaller single-file bundle, sys.executable is the
+    # .exe path; its directory is where Inno Setup copies the tessdata folder.
+    if getattr(sys, "frozen", False):
+        exe_dir = Path(sys.executable).parent
+    else:
+        exe_dir = Path(__file__).parent
+
+    bundled_tessdata = exe_dir / "tessdata"
+    if bundled_tessdata.is_dir():
+        # Tell Tesseract to look here first for .traineddata files.
+        os.environ["TESSDATA_PREFIX"] = str(exe_dir)
 
     import winreg
     candidates: list[str] = []

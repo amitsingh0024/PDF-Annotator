@@ -4,7 +4,7 @@
 ; ============================================================
 
 #define AppName      "PDF Annotation Studio"
-#define AppVersion   "1.0.0"
+#define AppVersion   "1.1.0"
 #define AppPublisher "PDF Annotation Studio"
 #define AppExeName   "PDFAnnotator.exe"
 #define AppURL       ""
@@ -64,12 +64,15 @@ Name: "tesseract";     Description: "Install &Tesseract OCR engine (required for
 ; Main executable (built by PyInstaller)
 Source: "{#SourcePath}\..\dist\{#AppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 
-; ── Tesseract OCR — bundled installer + language data ─────────────────────────
-; These files are extracted to {tmp} then installed/copied in the [Code] section.
-; They are auto-deleted when setup exits.
+; ── Tesseract OCR — bundled installer ─────────────────────────────────────────
+; Installer goes to {tmp} and is auto-deleted when setup exits.
 Source: "{#SourcePath}\tesseract-ocr-w64-setup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall; Tasks: tesseract
-Source: "{#SourcePath}\tessdata\hin.traineddata";     DestDir: "{tmp}\tessdata"; Flags: deleteafterinstall; Tasks: tesseract
-Source: "{#SourcePath}\tessdata\san.traineddata";     DestDir: "{tmp}\tessdata"; Flags: deleteafterinstall; Tasks: tesseract
+
+; ── Language data — copied directly into the app folder by Inno Setup ─────────
+; This avoids any Pascal FileCopy permission issues.  main.py sets
+; TESSDATA_PREFIX to {app} so Tesseract finds these files automatically.
+Source: "{#SourcePath}\tessdata\hin.traineddata"; DestDir: "{app}\tessdata"; Flags: ignoreversion; Tasks: tesseract
+Source: "{#SourcePath}\tessdata\san.traineddata"; DestDir: "{app}\tessdata"; Flags: ignoreversion; Tasks: tesseract
 
 [Icons]
 ; Start menu
@@ -168,44 +171,9 @@ begin
   Result := FileExists(AddBackslash(GetTesseractDir) + 'tesseract.exe');
 end;
 
-// Copies the bundled .traineddata files into Tesseract's tessdata folder.
-// Called both after a fresh Tesseract install and when Tesseract already exists.
-procedure CopyTessdata;
-var
-  TessdataDir, TmpTessdata: String;
-  HinOk, SanOk: Boolean;
-begin
-  TessdataDir := AddBackslash(GetTesseractDir) + 'tessdata\';
-  TmpTessdata := ExpandConstant('{tmp}\tessdata\');
-
-  if not DirExists(TessdataDir) then
-    CreateDir(TessdataDir);
-
-  HinOk := False; SanOk := False;
-
-  if FileExists(TmpTessdata + 'hin.traineddata') then
-    HinOk := FileCopy(TmpTessdata + 'hin.traineddata', TessdataDir + 'hin.traineddata', False);
-  if FileExists(TmpTessdata + 'san.traineddata') then
-    SanOk := FileCopy(TmpTessdata + 'san.traineddata', TessdataDir + 'san.traineddata', False);
-
-  if HinOk and SanOk then
-    MsgBox(
-      'Hindi and Sanskrit language data installed successfully.'#13#10 +
-      'Location: ' + TessdataDir,
-      mbInformation, MB_OK
-    )
-  else
-    MsgBox(
-      'Warning: Could not copy language data files to:'#13#10 +
-      TessdataDir + #13#10#13#10 +
-      'The Parse PDF feature may not recognize Hindi/Sanskrit.'#13#10 +
-      'You can copy hin.traineddata and san.traineddata manually'#13#10 +
-      'from: https://github.com/tesseract-ocr/tessdata_best',
-      mbError, MB_OK
-    );
-end;
-
-// Runs the bundled Tesseract installer silently, then copies language data.
+// Runs the bundled Tesseract installer silently.
+// Language data (hin/san) is placed into {app}\tessdata by the [Files] section;
+// main.py sets TESSDATA_PREFIX={app} at runtime so Tesseract finds them there.
 procedure InstallTesseract;
 var
   ResultCode: Integer;
@@ -235,9 +203,7 @@ begin
     );
     Exit;
   end;
-
-  // Install succeeded — copy Hindi/Sanskrit language data
-  CopyTessdata;
+  // Language data is already placed in {app}\tessdata by the [Files] section.
 end;
 
 // ── Installation steps ────────────────────────────────────────────────────────
@@ -257,15 +223,13 @@ begin
     end;
   end;
 
-  // ssPostInstall = after all app files are written; run Tesseract install now
-  // so {tmp} tessdata files are still present (deleteafterinstall cleans up
-  // only at the very end of the wizard).
+  // ssPostInstall = after all app files are written.
+  // Run the Tesseract installer if the user selected that task and it is not
+  // already present.  Language data is copied to {app}\tessdata by the [Files]
+  // section, so no extra Pascal copying is needed.
   if CurStep = ssPostInstall then begin
     if WizardIsTaskSelected('tesseract') then begin
-      if TesseractIsInstalled then
-        // Already installed — just add the language files
-        CopyTessdata
-      else
+      if not TesseractIsInstalled then
         InstallTesseract;
     end;
   end;
