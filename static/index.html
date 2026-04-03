@@ -186,59 +186,131 @@
 <!-- ── Settings Modal ─────────────────────────────────────────────────────── -->
 <div id="settingsModal" class="parse-overlay">
   <div class="modal-box settings-modal-box">
-    <h3>Settings</h3>
 
-    <div class="settings-group">
-      <div class="settings-group-title">Appearance</div>
-      <div class="settings-row">
-        <label class="settings-label">Theme</label>
-        <div class="settings-toggle-group">
-          <button class="settings-toggle-btn" id="btnThemeDark"  onclick="UI.setTheme('dark')">Dark</button>
-          <button class="settings-toggle-btn" id="btnThemeLight" onclick="UI.setTheme('light')">Light</button>
+    <!-- Tab bar -->
+    <div class="settings-tab-bar">
+      <button class="settings-tab active" id="stab-settings" onclick="UI.switchSettingsTab('settings')">Settings</button>
+      <button class="settings-tab"        id="stab-guide"    onclick="UI.switchSettingsTab('guide')">User Guide</button>
+    </div>
+
+    <!-- ── Settings panel ── -->
+    <div id="settings-panel-settings" class="settings-panel active">
+
+      <div class="settings-group">
+        <div class="settings-group-title">Appearance</div>
+        <div class="settings-row">
+          <label class="settings-label">Theme</label>
+          <div class="settings-toggle-group">
+            <button class="settings-toggle-btn" id="btnThemeDark"  onclick="UI.setTheme('dark')">Dark</button>
+            <button class="settings-toggle-btn" id="btnThemeLight" onclick="UI.setTheme('light')">Light</button>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div class="settings-group">
-      <div class="settings-group-title">Display</div>
-      <div class="settings-row">
-        <label class="settings-label">Render quality</label>
-        <select id="settingsDpi" class="settings-select">
-          <option value="100">Draft (100 DPI — fastest)</option>
-          <option value="150" selected>Standard (150 DPI)</option>
-          <option value="200">High (200 DPI)</option>
-        </select>
+      <div class="settings-group">
+        <div class="settings-group-title">Display</div>
+        <div class="settings-row">
+          <label class="settings-label">Render quality</label>
+          <select id="settingsDpi" class="settings-select">
+            <option value="100">Draft (100 DPI — fastest)</option>
+            <option value="150" selected>Standard (150 DPI)</option>
+            <option value="200">High (200 DPI)</option>
+          </select>
+        </div>
       </div>
-    </div>
 
-    <div class="settings-group">
-      <div class="settings-group-title">OCR / Parsing</div>
-      <div class="settings-row">
-        <label class="settings-label">Default language</label>
-        <input type="text" id="settingsLang" class="parse-input" placeholder="e.g. hin+san+eng">
+      <div class="settings-group">
+        <div class="settings-group-title">OCR / Parsing</div>
+        <div class="settings-row">
+          <label class="settings-label">Default language</label>
+          <input type="text" id="settingsLang" class="parse-input" placeholder="e.g. hin+san+eng">
+        </div>
+        <p class="parse-hint" style="margin-top:4px;margin-bottom:12px">
+          Tesseract language codes joined with +.
+          Common: <code>hin</code> Hindi · <code>san</code> Sanskrit · <code>eng</code> English
+        </p>
+        <div class="settings-row">
+          <label class="settings-label">OCR render DPI</label>
+          <select id="settingsOcrDpi" class="settings-select">
+            <option value="200">200 DPI — faster, less accurate</option>
+            <option value="300" selected>300 DPI — balanced (default)</option>
+            <option value="400">400 DPI — slower, more accurate</option>
+            <option value="600">600 DPI — slowest, highest accuracy</option>
+          </select>
+        </div>
+        <p class="parse-hint" style="margin-top:4px">
+          Higher DPI improves recognition of small or complex script like Devanagari.
+        </p>
       </div>
-      <p class="parse-hint" style="margin-top:4px;margin-bottom:12px">
-        Tesseract language codes joined with +.
-        Common: <code>hin</code> Hindi · <code>san</code> Sanskrit · <code>eng</code> English
-      </p>
-      <div class="settings-row">
-        <label class="settings-label">OCR render DPI</label>
-        <select id="settingsOcrDpi" class="settings-select">
-          <option value="200">200 DPI — faster, less accurate</option>
-          <option value="300" selected>300 DPI — balanced (default)</option>
-          <option value="400">400 DPI — slower, more accurate</option>
-          <option value="600">600 DPI — slowest, highest accuracy</option>
-        </select>
-      </div>
-      <p class="parse-hint" style="margin-top:4px">
-        Higher DPI improves recognition of small or complex script like Devanagari.
-      </p>
-    </div>
 
-    <div class="modal-actions">
-      <button class="btn" onclick="UI.closeSettings()">Cancel</button>
-      <button class="btn primary" onclick="UI.saveSettings()">Save</button>
-    </div>
+      <div class="modal-actions">
+        <button class="btn" onclick="UI.closeSettings()">Cancel</button>
+        <button class="btn primary" onclick="UI.saveSettings()">Save</button>
+      </div>
+    </div><!-- /settings-panel-settings -->
+
+    <!-- ── User Guide panel ── -->
+    <div id="settings-panel-guide" class="settings-panel">
+
+      <div class="guide-section">
+        <div class="guide-section-title">File</div>
+        <div class="guide-row"><kbd>Ctrl</kbd><kbd>O</kbd><span>Open PDF</span></div>
+        <div class="guide-row"><kbd>Ctrl</kbd><kbd>S</kbd><span>Save annotations</span></div>
+      </div>
+
+      <div class="guide-section">
+        <div class="guide-section-title">Tools</div>
+        <div class="guide-row"><kbd>V</kbd><span>Select / Move tool</span></div>
+        <div class="guide-row"><kbd>R</kbd><span>Rectangle annotation</span></div>
+        <div class="guide-row"><kbd>G</kbd><span>Polygon annotation</span></div>
+        <div class="guide-row"><kbd>F</kbd><span>Freehand lasso</span></div>
+        <div class="guide-row"><kbd>E</kbd><span>Eraser — click a region to delete it</span></div>
+        <div class="guide-row"><kbd>Space</kbd><span>Pan (hold while using any tool)</span></div>
+        <div class="guide-row"><kbd>Esc</kbd><span>Cancel drawing / deselect</span></div>
+        <div class="guide-row"><kbd>Del</kbd><span>Delete selected region</span></div>
+      </div>
+
+      <div class="guide-section">
+        <div class="guide-section-title">History</div>
+        <div class="guide-row"><kbd>Ctrl</kbd><kbd>Z</kbd><span>Undo</span></div>
+        <div class="guide-row"><kbd>Ctrl</kbd><kbd>Y</kbd><span>Redo</span></div>
+      </div>
+
+      <div class="guide-section">
+        <div class="guide-section-title">Zoom &amp; Navigation</div>
+        <div class="guide-row"><kbd>+</kbd><span>Zoom in</span></div>
+        <div class="guide-row"><kbd>−</kbd><span>Zoom out</span></div>
+        <div class="guide-row"><kbd>0</kbd><span>Fit page to window</span></div>
+        <div class="guide-row"><kbd>Scroll</kbd><span>Zoom in / out</span></div>
+        <div class="guide-row"><kbd>←</kbd> <kbd>→</kbd><span>Previous / Next page</span></div>
+      </div>
+
+      <div class="guide-section">
+        <div class="guide-section-title">Labels</div>
+        <div class="guide-row"><kbd>1</kbd> – <kbd>9</kbd><span>Switch to label slot 1 – 9</span></div>
+      </div>
+
+      <div class="guide-section">
+        <div class="guide-section-title">App</div>
+        <div class="guide-row"><kbd>T</kbd><span>Open Settings / User Guide</span></div>
+      </div>
+
+      <div class="guide-section guide-section--tip">
+        <div class="guide-section-title">Annotation tips</div>
+        <ul class="guide-tips">
+          <li>Annotate in reading order — the Parse output follows the exact sequence you drew the boxes.</li>
+          <li>Use the <b>Ignore</b> label on regions you want skipped during OCR parsing.</li>
+          <li>Annotations auto-save after every change. Ctrl+S forces an immediate save.</li>
+          <li>Drag a PDF file directly onto the window to open it.</li>
+          <li>Right-click a label chip to rename or change its colour.</li>
+        </ul>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn primary" onclick="UI.closeSettings()">Close</button>
+      </div>
+    </div><!-- /settings-panel-guide -->
+
   </div>
 </div>
 

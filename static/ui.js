@@ -421,11 +421,20 @@ const UI = (() => {
     document.getElementById("settingsOcrDpi").value = String(prefs.ocr_dpi    || 300);
     _refreshThemeButtons(isDark ? "dark" : "light");
 
+    // Always open on the Settings tab
+    switchSettingsTab("settings");
     document.getElementById("settingsModal").classList.add("visible");
   }
 
   function closeSettings() {
     document.getElementById("settingsModal").classList.remove("visible");
+  }
+
+  function switchSettingsTab(name) {
+    ["settings", "guide"].forEach(t => {
+      document.getElementById(`stab-${t}`).classList.toggle("active", t === name);
+      document.getElementById(`settings-panel-${t}`).classList.toggle("active", t === name);
+    });
   }
 
   function setTheme(theme) {
@@ -633,6 +642,7 @@ const UI = (() => {
     closeSettings,
     setTheme,
     saveSettings,
+    switchSettingsTab,
     // Parse
     showParseModal,
     closeParseModal,
