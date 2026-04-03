@@ -134,18 +134,32 @@ end;
 
 // ── Tesseract OCR ─────────────────────────────────────────────────────────────
 
-// Returns the Tesseract install directory, reading the registry first then
-// falling back to the default Program Files path.
+// Returns the Tesseract install directory.
+// Tries multiple registry locations the UB-Mannheim NSIS installer may write,
+// then falls back to the standard Program Files path.
 function GetTesseractDir: String;
 var
-  Dir: String;
+  Dir, UninstallStr: String;
 begin
+  // 1. Direct InstallDir value (some versions)
   if RegQueryStringValue(HKLM, 'SOFTWARE\Tesseract-OCR', 'InstallDir', Dir) and (Dir <> '') then begin
-    Result := Dir; Exit;
+    Result := RemoveBackslashUnlessRoot(Dir); Exit;
   end;
   if RegQueryStringValue(HKLM, 'SOFTWARE\WOW6432Node\Tesseract-OCR', 'InstallDir', Dir) and (Dir <> '') then begin
-    Result := Dir; Exit;
+    Result := RemoveBackslashUnlessRoot(Dir); Exit;
   end;
+  // 2. Derive path from the uninstall string (most reliable for NSIS installers)
+  if RegQueryStringValue(HKLM,
+      'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Tesseract-OCR',
+      'UninstallString', UninstallStr) and (UninstallStr <> '') then begin
+    Result := RemoveBackslashUnlessRoot(ExtractFilePath(UninstallStr)); Exit;
+  end;
+  if RegQueryStringValue(HKLM,
+      'SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Tesseract-OCR',
+      'UninstallString', UninstallStr) and (UninstallStr <> '') then begin
+    Result := RemoveBackslashUnlessRoot(ExtractFilePath(UninstallStr)); Exit;
+  end;
+  // 3. Hard fallback
   Result := ExpandConstant('{pf}\Tesseract-OCR');
 end;
 
@@ -159,15 +173,36 @@ end;
 procedure CopyTessdata;
 var
   TessdataDir, TmpTessdata: String;
+  HinOk, SanOk: Boolean;
 begin
-  TessdataDir  := AddBackslash(GetTesseractDir) + 'tessdata\';
-  TmpTessdata  := ExpandConstant('{tmp}\tessdata\');
+  TessdataDir := AddBackslash(GetTesseractDir) + 'tessdata\';
+  TmpTessdata := ExpandConstant('{tmp}\tessdata\');
+
   if not DirExists(TessdataDir) then
     CreateDir(TessdataDir);
+
+  HinOk := False; SanOk := False;
+
   if FileExists(TmpTessdata + 'hin.traineddata') then
-    FileCopy(TmpTessdata + 'hin.traineddata', TessdataDir + 'hin.traineddata', False);
+    HinOk := FileCopy(TmpTessdata + 'hin.traineddata', TessdataDir + 'hin.traineddata', False);
   if FileExists(TmpTessdata + 'san.traineddata') then
-    FileCopy(TmpTessdata + 'san.traineddata', TessdataDir + 'san.traineddata', False);
+    SanOk := FileCopy(TmpTessdata + 'san.traineddata', TessdataDir + 'san.traineddata', False);
+
+  if HinOk and SanOk then
+    MsgBox(
+      'Hindi and Sanskrit language data installed successfully.'#13#10 +
+      'Location: ' + TessdataDir,
+      mbInformation, MB_OK
+    )
+  else
+    MsgBox(
+      'Warning: Could not copy language data files to:'#13#10 +
+      TessdataDir + #13#10#13#10 +
+      'The Parse PDF feature may not recognize Hindi/Sanskrit.'#13#10 +
+      'You can copy hin.traineddata and san.traineddata manually'#13#10 +
+      'from: https://github.com/tesseract-ocr/tessdata_best',
+      mbError, MB_OK
+    );
 end;
 
 // Runs the bundled Tesseract installer silently, then copies language data.
