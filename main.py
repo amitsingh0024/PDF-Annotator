@@ -333,6 +333,24 @@ class API:
         if not pages:
             return {"error": "No pages selected"}
 
+        # Verify every language model requested is actually present before
+        # starting the background thread — gives a clear message instead of a
+        # cryptic TesseractError mid-parse.
+        tess_prefix = os.environ.get("TESSDATA_PREFIX", "")
+        if tess_prefix:
+            missing = [
+                l for l in str(lang).split("+")
+                if not os.path.exists(os.path.join(tess_prefix, f"{l}.traineddata"))
+            ]
+            if missing:
+                return {
+                    "error": (
+                        f"Missing OCR language data: {', '.join(missing)}.traineddata\n"
+                        f"Expected location: {tess_prefix}\n"
+                        "Please reinstall the app to restore bundled language files."
+                    )
+                }
+
         _ocr_state = {
             "running":     True,
             "cancel":      False,
