@@ -435,12 +435,12 @@ class API:
                     bitmap = doc[page_num - 1].render(scale=dpi / 72, rotation=0)
                     img    = bitmap.to_pil()
 
-                    def _top_y(r):
-                        if "pts" in r:
-                            return min(p["y"] for p in r["pts"])
-                        return r.get("y", 0)
-
-                    for r in sorted(active, key=_top_y):
+                    # Preserve the annotation creation order from the JSON file.
+                    # Annotations are stored in the order the user drew them, which
+                    # is the intended reading sequence — do NOT re-sort spatially,
+                    # as that breaks multi-column layouts where two columns share
+                    # similar Y coordinates.
+                    for r in active:
                         if _ocr_state["cancel"]:
                             _ocr_state.update({"status": "Cancelled", "running": False})
                             return
