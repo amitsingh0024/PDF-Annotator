@@ -59,7 +59,7 @@ if not exist "installer\tesseract-ocr-w64-setup.exe" (
 :: Hindi language data (tessdata_fast)
 if not exist "installer\tessdata\hin.traineddata" (
     echo  Downloading Hindi language data...
-    curl.exe -L --fail -o "installer\tessdata\hin.traineddata" "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/hin.traineddata"
+    curl.exe -L --fail -o "installer\tessdata\hin.traineddata" "https://raw.githubusercontent.com/tesseract-ocr/tessdata_best/main/hin.traineddata"
     if errorlevel 1 (
         echo  ERROR: Could not download Hindi language data (hin.traineddata).
         echo  Download manually from: https://github.com/tesseract-ocr/tessdata_fast
@@ -73,7 +73,7 @@ if not exist "installer\tessdata\hin.traineddata" (
 :: Sanskrit language data
 if not exist "installer\tessdata\san.traineddata" (
     echo  Downloading Sanskrit language data...
-    curl.exe -L --fail -o "installer\tessdata\san.traineddata" "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/san.traineddata"
+    curl.exe -L --fail -o "installer\tessdata\san.traineddata" "https://raw.githubusercontent.com/tesseract-ocr/tessdata_best/main/san.traineddata"
     if errorlevel 1 (
         echo  ERROR: Could not download Sanskrit language data (san.traineddata).
         echo  Download manually from: https://github.com/tesseract-ocr/tessdata_fast

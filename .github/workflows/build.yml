@@ -78,7 +78,7 @@ jobs:
             installer/tesseract-ocr-w64-setup.exe
             installer/tessdata/hin.traineddata
             installer/tessdata/san.traineddata
-          key: tesseract-${{ steps.tess-version.outputs.tag }}-tessdata-fast
+          key: tesseract-${{ steps.tess-version.outputs.tag }}-tessdata-best
 
       - name: Download Tesseract installer and language data
         if: steps.cache-tesseract.outputs.cache-hit != 'true'
@@ -97,11 +97,11 @@ jobs:
           Write-Host "  -> $(([math]::Round((Get-Item 'installer\tesseract-ocr-w64-setup.exe').Length/1MB,1))) MB"
 
           Write-Host "Downloading Hindi language data..."
-          curl.exe -L --fail -o "installer\tessdata\hin.traineddata" "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/hin.traineddata"
+          curl.exe -L --fail -o "installer\tessdata\hin.traineddata" "https://raw.githubusercontent.com/tesseract-ocr/tessdata_best/main/hin.traineddata"
           Write-Host "  -> $(([math]::Round((Get-Item 'installer\tessdata\hin.traineddata').Length/1MB,1))) MB"
 
           Write-Host "Downloading Sanskrit language data..."
-          curl.exe -L --fail -o "installer\tessdata\san.traineddata" "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/san.traineddata"
+          curl.exe -L --fail -o "installer\tessdata\san.traineddata" "https://raw.githubusercontent.com/tesseract-ocr/tessdata_best/main/san.traineddata"
           Write-Host "  -> $(([math]::Round((Get-Item 'installer\tessdata\san.traineddata').Length/1MB,1))) MB"
 
       - name: Verify Tesseract components present

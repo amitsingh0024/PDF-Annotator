@@ -217,9 +217,21 @@
         <label class="settings-label">Default language</label>
         <input type="text" id="settingsLang" class="parse-input" placeholder="e.g. hin+san+eng">
       </div>
-      <p class="parse-hint" style="margin-top:6px">
+      <p class="parse-hint" style="margin-top:4px;margin-bottom:12px">
         Tesseract language codes joined with +.
-        Common codes: <code>hin</code> Hindi · <code>san</code> Sanskrit · <code>eng</code> English
+        Common: <code>hin</code> Hindi · <code>san</code> Sanskrit · <code>eng</code> English
+      </p>
+      <div class="settings-row">
+        <label class="settings-label">OCR render DPI</label>
+        <select id="settingsOcrDpi" class="settings-select">
+          <option value="200">200 DPI — faster, less accurate</option>
+          <option value="300" selected>300 DPI — balanced (default)</option>
+          <option value="400">400 DPI — slower, more accurate</option>
+          <option value="600">600 DPI — slowest, highest accuracy</option>
+        </select>
+      </div>
+      <p class="parse-hint" style="margin-top:4px">
+        Higher DPI improves recognition of small or complex script like Devanagari.
       </p>
     </div>
 

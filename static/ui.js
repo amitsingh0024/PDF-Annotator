@@ -416,8 +416,9 @@ const UI = (() => {
     const prefs = await App.pyCall("get_prefs");
     const isDark = !document.body.classList.contains("light");
 
-    document.getElementById("settingsLang").value = prefs.ocr_lang || "hin+san+eng";
-    document.getElementById("settingsDpi").value  = String(prefs.default_dpi || 150);
+    document.getElementById("settingsLang").value   = prefs.ocr_lang  || "hin+san+eng";
+    document.getElementById("settingsDpi").value    = String(prefs.default_dpi || 150);
+    document.getElementById("settingsOcrDpi").value = String(prefs.ocr_dpi    || 300);
     _refreshThemeButtons(isDark ? "dark" : "light");
 
     document.getElementById("settingsModal").classList.add("visible");
@@ -439,11 +440,12 @@ const UI = (() => {
   }
 
   async function saveSettings() {
-    const lang  = document.getElementById("settingsLang").value.trim() || "hin+san+eng";
-    const dpi   = parseInt(document.getElementById("settingsDpi").value) || 150;
-    const theme = document.body.classList.contains("light") ? "light" : "dark";
+    const lang   = document.getElementById("settingsLang").value.trim() || "hin+san+eng";
+    const dpi    = parseInt(document.getElementById("settingsDpi").value)    || 150;
+    const ocrDpi = parseInt(document.getElementById("settingsOcrDpi").value) || 300;
+    const theme  = document.body.classList.contains("light") ? "light" : "dark";
 
-    await App.pyCall("save_prefs", { theme, default_dpi: dpi, ocr_lang: lang });
+    await App.pyCall("save_prefs", { theme, default_dpi: dpi, ocr_lang: lang, ocr_dpi: ocrDpi });
     closeSettings();
     status("Settings saved.");
   }
@@ -493,7 +495,8 @@ const UI = (() => {
     if (!selected.length) { status("Select at least one page."); return; }
 
     const prefs   = await App.pyCall("get_prefs");
-    const lang    = prefs.ocr_lang || "hin+san+eng";
+    const lang    = prefs.ocr_lang  || "hin+san+eng";
+    const ocrDpi  = prefs.ocr_dpi   || 300;
     const wantTxt  = document.getElementById("fmtTxt").checked;
     const wantJson = document.getElementById("fmtJson").checked;
     if (!wantTxt && !wantJson) { status("Select at least one output format."); return; }
@@ -501,7 +504,7 @@ const UI = (() => {
     closeParseModal();
     _openProgressModal(selected.length, wantTxt, wantJson);
 
-    const res = await App.pyCall("start_ocr_parse", selected, lang);
+    const res = await App.pyCall("start_ocr_parse", selected, lang, ocrDpi);
     if (res.error) {
       _setProgressError(res.error);
       return;

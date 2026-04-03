@@ -110,7 +110,7 @@ def _load_prefs() -> dict:
             return json.loads(PREFS_FILE.read_text())
         except Exception:
             pass
-    return {"theme": "dark", "default_dpi": 150, "ocr_lang": "hin+san+eng"}
+    return {"theme": "dark", "default_dpi": 150, "ocr_lang": "hin+san+eng", "ocr_dpi": 300}
 
 
 def _save_prefs(prefs: dict) -> None:
@@ -301,7 +301,7 @@ class API:
         except Exception:
             return []
 
-    def start_ocr_parse(self, pages: list, lang: str) -> dict:
+    def start_ocr_parse(self, pages: list, lang: str, dpi: int = 300) -> dict:
         """Start OCR parsing in a background thread."""
         global _ocr_state
         if not _TESSERACT_OK:
@@ -326,7 +326,7 @@ class API:
         }
         t = threading.Thread(
             target=self._ocr_worker,
-            args=(list(pages), str(lang)),
+            args=(list(pages), str(lang), int(dpi)),
             daemon=True,
         )
         t.start()
@@ -363,7 +363,7 @@ class API:
         except Exception as e:
             return {"error": str(e)}
 
-    def _ocr_worker(self, pages: list, lang: str) -> None:
+    def _ocr_worker(self, pages: list, lang: str, dpi: int = 300) -> None:
         global _ocr_state
         try:
             ann_path = _annotation_path(_current_pdf_path)
@@ -394,7 +394,7 @@ class API:
                 chunks: list = []
 
                 if active:
-                    bitmap = doc[page_num - 1].render(scale=300 / 72, rotation=0)
+                    bitmap = doc[page_num - 1].render(scale=dpi / 72, rotation=0)
                     img    = bitmap.to_pil()
 
                     def _top_y(r):
@@ -446,7 +446,7 @@ class API:
             result_data = {
                 "source":       Path(_current_pdf_path).name,
                 "lang":         lang,
-                "dpi":          300,
+                "dpi":          dpi,
                 "pages_parsed": len(pages),
                 "pages":        all_pages,
             }
