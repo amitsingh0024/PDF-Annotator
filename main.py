@@ -45,8 +45,9 @@ def _setup_tesseract() -> None:
 
     bundled_tessdata = exe_dir / "tessdata"
     if bundled_tessdata.is_dir():
-        # Tell Tesseract to look here first for .traineddata files.
-        os.environ["TESSDATA_PREFIX"] = str(exe_dir)
+        # Tesseract 4+ expects TESSDATA_PREFIX to be the folder that directly
+        # contains the .traineddata files (i.e. the tessdata/ dir itself).
+        os.environ["TESSDATA_PREFIX"] = str(bundled_tessdata)
 
     import winreg
     candidates: list[str] = []
